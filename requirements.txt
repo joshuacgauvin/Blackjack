@@ -1,0 +1,16 @@
+# Blackjack simulator - Python dependencies
+
+#   pip install -r requirements.txt
+#   jupyter notebook blackjack.ipynb
+#
+# Requires Python 3.9 or newer. Developed and verified on 3.14.6 (Windows).
+# Version floors below are minimums; the exact versions this was verified against
+# are noted in comments. Pin with == if you need bit-for-bit reproducibility.
+
+pandas>=2.0             # trials_df / equity_df, quantiles, DataFrame construction   (tested 3.0.3)
+matplotlib>=3.7         # all plotting, MaxNLocator / FuncFormatter axis control     (tested 3.11.1)
+seaborn>=0.12           # sns.lineplot; 0.12 added the positional `data` argument    (tested 0.13.2)
+ipykernel>=6.0          # required to execute the .ipynb in VS Code or Jupyter
+
+# The simulation engine itself uses only the standard library (random, math, time).
+# pandas / matplotlib / seaborn are needed solely for the metrics and plots.
