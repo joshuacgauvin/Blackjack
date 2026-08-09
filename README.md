@@ -8,9 +8,9 @@ Over 100 independent trials of 1,000,000 rounds each (100M rounds total) with a 
 | | |
 |---|---|
 | Edge | **+0.59%** of total wagered |
-| EV per round | **$0.053 (0.01 units)** on a $5 base bet (95% CI: $0.050 – $0.056) |
+| EV per round | **$0.053 (0.011 units)** on a $5 base bet (95% CI: $0.050 – $0.056, or 0.010 – 0.011 units) |
 | EV per hour | **$5.31 (1.06 units)** at 100 rounds/hour |
-| Standard deviation | $15.02 per round (3.0 units) |
+| Standard deviation | $15.02 per round (3.00 units) |
 | N<sub>0</sub> — rounds until EV equals one SD | **80,088** |
 | Bankroll for <1% risk of ruin | **2,000 units** ($10,000 at $5) |
 
@@ -39,7 +39,7 @@ real cards from a real shoe and resolves them under the table rules below.
 | Split aces | One card each, no resplit |
 | Surrender | Late surrender allowed |
 | Insurance | Available on a dealer ace |
-| Wonging out | Not allowed in simulation but can be toggeled|
+| Wonging out | Not allowed in simulation but can be toggled|
 
 All of these are constants at the top of the notebook, so the whole study can be re-run
 against a different game (8 decks, 6:5 blackjack, no surrender) by changing one cell.
@@ -69,27 +69,27 @@ the true count is the running count divided by decks remaining. Bets spread 1–
 | ≥ 5 | 12 units |
 
 The bet is locked in *before* any card of the round is dealt, which is the only legal way to
-do it. Average bet across the study came out to $8.71 on a $5 base.
+do it. Average bet across the study came out to $8.71 (1.74 units) on a $5 base.
 
 ## Results
 
 **Distribution of outcomes across 100 trials of 1M rounds:**
 
-| Percentile | Final P&L |
-|---|---|
-| 5th | +$25,978 |
-| 25th | +$43,338 |
-| 50th | +$51,642 |
-| 75th | +$64,613 |
-| 95th | +$76,600 |
-| worst / best | +$16,158 / +$85,632 |
+| Percentile | Final P&L | In units |
+|---|---|---|
+| 5th | +$25,978 | +5,196 |
+| 25th | +$43,338 | +8,668 |
+| 50th | +$51,642 | +10,328 |
+| 75th | +$64,613 | +12,923 |
+| 95th | +$76,600 | +15,320 |
+| worst / best | +$16,158 / +$85,632 | +3,232 / +17,126 |
 
 Every trial finished ahead. Over a million rounds the edge is overwhelming — but note the
 spread: the luckiest run made five times the unluckiest, from identical strategy.
 
-**Maximum drawdown within a trial** — median $8,006 (1,601 base bets), 95th percentile
-$11,811, worst $13,440. Even a guaranteed-winning strategy spends part of its life deeply
-underwater.
+**Maximum drawdown within a trial** — median $8,006 (1,601 units), 95th percentile
+$11,811 (2,362 units), worst $13,440 (2,688 units). Even a guaranteed-winning strategy spends
+part of its life deeply underwater.
 
 **Risk of ruin**, by bankroll:
 
@@ -111,6 +111,45 @@ have busted a 100-unit bankroll along the way. Both are true: with a positive ed
 *eventually*, but "eventually" is far enough away that undercapitalization kills you first.
 The edge decides where you end up; the variance decides whether you're still there to see it.
 
+### Wonging out — more edge per round, fewer rounds per hour
+
+Everything above is straight counting: sit down, play every hand, ride the count up and down.
+*Wonging out* means leaving when the count goes bad. Setting `WONGING_OUT = True` abandons the
+shoe at a true count below −2, which models sitting out the rest of that shoe and resuming
+after the shuffle. Re-running the same 100 × 1M study with it on:
+
+| | Baseline | Wonging out |
+|---|---|---|
+| EV per round | $0.053 (0.011 units) | **$0.098 (0.020 units)** |
+| Edge | +0.59% | **+0.99%** |
+| EV per hour, *if the skipped rounds were free* | $5.31 (1.06 units) | $9.79 (1.96 units) |
+| Average bet | $8.71 (1.74 units) | $9.58 (1.92 units) |
+| SD per round | $15.02 (3.00 units) | $16.68 (3.34 units) |
+| N<sub>0</sub> | 80,088 | **29,035** |
+| Median final P&L | +$51,642 (10,328 units) | +$99,471 (19,894 units) |
+| Median max drawdown | $8,006 (1,601 units) | $6,535 (1,307 units) |
+| Risk of ruin, 1,000 units | 9% | 2% |
+
+Per round it looks like an 84% improvement. It isn't, because the rounds you skip still cost
+time. **58% of shoes get abandoned**, with a median 103 cards still live — about 18 rounds you
+don't play. Shoes drop from 42.4 rounds to 31.6, and you end up betting only **74% of the time
+you're at the table**. At 100 dealt rounds per hour that's 74 wagers, not 100:
+
+| | Per hour | In units |
+|---|---|---|
+| Baseline | $5.31 | 1.06 |
+| Wonging, ignoring the sit-out | $9.79 | 1.96 |
+| **Wonging, 74 betting rounds/hour** | **$7.29** | **1.46** |
+
+So the honest gain is **+37%, not +84%**. Per-round metrics flatter wonging because it deletes
+the cheap low-count rounds from the denominator; per hour is the comparison that survives
+contact with a real table.
+
+The variance side is genuinely better, though, and that part has no asterisk: N<sub>0</sub>
+drops from 80,088 rounds to 29,035 — under 300 hours instead of 800 — and risk of ruin on a
+1,000-unit bankroll falls from 9% to 2%. Skipping bad shoes doesn't just earn more, it earns
+it sooner and with shallower holes along the way.
+
 ## Notes on the implementation
 
 **Why a Monte Carlo harness instead of one long run.** A single 1M-hand run gives you one
@@ -129,26 +168,23 @@ bankruptcy. Because the bet ramp depends only on the true count and never on the
 the P&L path is independent of the starting stake — so recording each trial's minimum equity
 lets risk of ruin be computed for *any* bankroll afterward, from one set of runs.
 
-**Performance.** Equity samples are collected into a list and converted to a DataFrame once at
-the end; building it with `pd.concat` in the loop measured ~213× slower.
 
 ## Limitations
 
 This models a player, not a casino floor. Specifically it assumes:
 
-- **Perfect play** — no counting errors, no fatigue, no missed index plays
-- **No countermeasures** — no backoffs, no shuffling-up on a big bet, no barring
-- **Flat-out betting** — the 1–12 spread is played openly; real counters need cover
-- **No wonging in** — Wonging out can be toggeled in the simulation but is treated as leaving a low count table and moving to a table with a new shoe.
+- **Perfect play** — no counting errors, no fatigue, no missed index plays.
+- **No countermeasures** — no backoffs, no shuffling-up on a big bet, no barring.
+- **Flat-out betting** — the 1–12 spread is played openly; real counters need cover.
+- **No wonging in** — back-counting a table from the rail and only sitting down once the count
+  is already good is not modelled. Wonging *out* is (see above), but it is measured as pure
+  table time, with no cost for walking, waiting for a seat, or being noticed doing it.
 - **A single player, heads-up** — no other players at the table, and no cut-card effects
-  beyond fixed penetration
+  beyond fixed penetration.
 
 Real-world results would be meaningfully worse. Treat the +0.59% as a clean upper bound on
 what this strategy is worth against this rule set.
 
-## Files
-
-- `blackjack.ipynb` — the whole project: engine, strategy, Monte Carlo harness, and analysis
 
 ---
 
